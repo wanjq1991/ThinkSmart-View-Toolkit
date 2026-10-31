@@ -51,8 +51,8 @@ cd ThinkSmart-View-Toolkit
 ./uninstall.sh                 # 一键还原全部改动（含退出全屏）
 ```
 
-不想用 git？直接下 [**v1.0 源码包**](https://github.com/wanjq1991/ThinkSmart-View-Toolkit/releases/latest)
-（zip / tar.gz），解压后同样跑 `./install.sh`。
+不想用 git？直接下 [**源码压缩包**](https://github.com/wanjq1991/ThinkSmart-View-Toolkit/releases/latest)
+（zip / tar.gz，每个版本的 Release 页面底部都有），解压后同样跑 `./install.sh`。
 
 ---
 
