@@ -5,13 +5,14 @@
 #  把 install.sh 做的改动逐项还原：
 #    - 停掉按键唤醒守护，删除三个开机脚本与日志
 #    - 动画缩放 / 密度 / 熄屏超时 / 双击唤醒 恢复默认
+#    - 全屏沉浸式关闭（删掉 policy_control，状态栏与导航栏重新出现）
 #    - 壁纸恢复为安装前的备份
 #
 #  注意：zram 扩容在重启后自动回到原厂配置（不再被脚本改写），无需额外处理。
 # ============================================================================
 set -uo pipefail
 
-VERSION="1.0.0"
+VERSION="1.0.1"
 SERIAL=""
 DO_REBOOT=1
 DO_WALLPAPER=1
@@ -93,7 +94,7 @@ dim "删除脚本      /data/adb/service.d/99timesync.sh"
 dim "              /data/adb/service.d/97keywake.sh"
 dim "              /data/adb/post-fs-data.d/98zram.sh"
 dim "删除日志      /data/adb/{timesync,zram,keywake}.log"
-dim "恢复设置      动画缩放 / 密度 / 熄屏超时 / 双击唤醒"
+dim "恢复设置      动画缩放 / 密度 / 熄屏超时 / 双击唤醒 / 全屏沉浸式"
 [ "$DO_WALLPAPER" -eq 1 ] && dim "恢复壁纸      /data/adb/wallpaper_info.xml.bak"
 
 if [ "$CHECK_ONLY" -eq 1 ]; then
@@ -129,7 +130,8 @@ ab shell "wm density reset" >/dev/null 2>&1
 ab shell settings put system screen_off_timeout 60000 >/dev/null 2>&1
 ab shell settings put secure double_tap_to_wake 0 >/dev/null 2>&1
 ab shell settings put system accelerometer_rotation 1 >/dev/null 2>&1
-ok "动画 1.0x / 密度恢复原厂 / 熄屏 60s / 双击唤醒关闭"
+ab shell "settings delete global policy_control" >/dev/null 2>&1
+ok "动画 1.0x / 密度恢复原厂 / 熄屏 60s / 双击唤醒关闭 / 全屏已退出"
 
 # 注意：密度恢复原厂（260）后 sw 掉到 492dp，桌面会重新锁竖屏。
 dim "提示：密度恢复后桌面会锁回竖屏，这是原厂行为，不是故障。"

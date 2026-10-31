@@ -2,18 +2,19 @@
 # ============================================================================
 #  ThinkSmart View (CD-18781Y) 一键优化部署脚本
 #
-#  把本项目调好的四项优化一次性装到已刷 LineageOS + Magisk 的设备上：
+#  把本项目调好的五项优化一次性装到已刷 LineageOS + Magisk 的设备上：
 #    1. 开机自动校时   —— 本机无 RTC 电池，且系统 NTP 走 UDP 123 被运营商拦截
 #    2. zram 扩容      —— 509MB → 1GB，缓解 2GB 内存下频繁 OOM
 #    3. 按键唤醒屏幕   —— 本机外壳无电源键，熄屏后只能点屏幕
-#    4. Apple TV 风格壁纸（可选）
+#    4. 全屏沉浸式     —— 隐藏状态栏与导航栏，当电视盒子/相框用时画面更干净
+#    5. Apple TV 风格壁纸（可选）
 #
 #  前置条件：设备已刷 LineageOS 15.1 + GApps，且 root 为 Magisk / KernelSU
 #  用法：./install.sh --help
 # ============================================================================
 set -uo pipefail
 
-VERSION="1.0.0"
+VERSION="1.0.1"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ---------------------------- 默认参数 --------------------------------------
@@ -24,6 +25,8 @@ DO_WALLPAPER=1
 DO_TWEAK=1
 DO_REBOOT=1
 DO_SYNC=1
+DO_IMMERSIVE=1
+IMMERSIVE_MODE="full"
 PORTRAIT=0
 CHECK_ONLY=0
 FORCE=0
@@ -55,6 +58,8 @@ ThinkSmart View 一键优化部署
       --no-wallpaper    不更换壁纸
       --no-tweak        只装开机脚本，不改系统设置
       --no-sync         不安装开机自动校时
+      --no-immersive    不开启全屏沉浸式（保留状态栏和导航栏）
+      --immersive-nav   只隐藏导航栏，保留状态栏
       --no-reboot       全部装完后不自动重启
       --check           只做环境检测，不做任何修改
   -f, --force           跳过设备型号校验（刷了别的机型时用）
@@ -65,6 +70,7 @@ ThinkSmart View 一键优化部署
   ./install.sh --no-reboot          # 装完不重启，自己找时间重启
   ./install.sh --check              # 先看看设备状态是否满足条件
   ./install.sh -s HUA0BNEU --portrait
+  ./install.sh --no-immersive       # 桌面想要状态栏就别开全屏
 EOF
 }
 
@@ -78,6 +84,8 @@ while [ $# -gt 0 ]; do
         --no-wallpaper)  DO_WALLPAPER=0; shift ;;
         --no-tweak)      DO_TWEAK=0; shift ;;
         --no-sync)       DO_SYNC=0; shift ;;
+        --no-immersive)  DO_IMMERSIVE=0; shift ;;
+        --immersive-nav) DO_IMMERSIVE=1; IMMERSIVE_MODE="navigation"; shift ;;
         --no-reboot)     DO_REBOOT=0; shift ;;
         --check)         CHECK_ONLY=1; shift ;;
         -f|--force)      FORCE=1; shift ;;
@@ -260,6 +268,37 @@ if [ "$DO_TWEAK" -eq 1 ]; then
     # 自动旋转
     ab shell settings put system accelerometer_rotation 1 >/dev/null 2>&1
     ok "自动旋转 → 开启"
+
+    # 全屏沉浸式：本机本来就没有实体键，把状态栏和导航栏藏起来，画面全给应用。
+    # policy_control 走 immersive sticky —— 从屏幕下缘上滑可临时呼出导航栏，
+    # 5 秒无操作自动收起，所以不会出现"全屏后回不到桌面"的情况。
+    # 它属于 global 设置，重启后依然生效；还原用 settings delete global policy_control。
+    if [ "$DO_IMMERSIVE" -eq 1 ]; then
+        # 第一次进入沉浸式时，系统会弹一个"全屏提示"教学对话框要你点确认。
+        # 这台设备是当电视/相框用的，弹窗卡在那儿没人点，所以先把确认标记写死跳过。
+        ab shell "settings put secure immersive_mode_confirmations confirmed" >/dev/null 2>&1
+        case "$IMMERSIVE_MODE" in
+            navigation)
+                ab shell "settings put global policy_control immersive.navigation=*" >/dev/null 2>&1
+                WANT_PC="immersive.navigation=*"
+                ok "全屏沉浸式 → 只隐藏导航栏（状态栏保留）"
+                ;;
+            *)
+                ab shell "settings put global policy_control immersive.full=*" >/dev/null 2>&1
+                WANT_PC="immersive.full=*"
+                ok "全屏沉浸式 → 隐藏状态栏 + 导航栏（下缘上滑可临时呼出）"
+                ;;
+        esac
+        PC_NOW="$(ab shell "settings get global policy_control" 2>/dev/null | tr -d '\r')"
+        if [ "$PC_NOW" = "$WANT_PC" ]; then
+            dim "已生效: policy_control=$PC_NOW"
+        else
+            warn "写入后读回为 '${PC_NOW:-<空>}'，与预期 '$WANT_PC' 不一致"
+            dim "可手动执行: adb shell settings put global policy_control '$WANT_PC'"
+        fi
+    else
+        dim "跳过全屏沉浸式（--no-immersive）"
+    fi
 else
     printf '\n'
     dim "跳过系统设置（--no-tweak）"
@@ -312,6 +351,10 @@ printf '\n'
 info "部署完成，汇总："
 dim "开机脚本: /data/adb/service.d/{99timesync,97keywake}.sh  /data/adb/post-fs-data.d/98zram.sh"
 dim "日志位置: /data/adb/{timesync,zram,keywake}.log"
+if [ "$DO_TWEAK" -eq 1 ] && [ "$DO_IMMERSIVE" -eq 1 ]; then
+    dim "全屏沉浸式: 立即生效（不用等重启），下缘上滑可呼出导航栏"
+    dim "       关掉它: adb shell settings delete global policy_control"
+fi
 dim "立即验证: adb shell su -c 'cat /data/adb/keywake.log'"
 
 if [ "$DO_REBOOT" -eq 1 ]; then

@@ -30,13 +30,14 @@ cd ThinkSmart-View-Toolkit
 ./install.sh             # 确认没问题后正式部署，最后自动重启
 ```
 
-装完这四样：
+装完这五样：
 
 | 优化 | 解决什么 | 效果（实测） |
 |---|---|---|
 | 开机自动校时 | 无 RTC，断电后时间回到 1970；系统 NTP 走 UDP 123 被运营商拦 | 联网后 3 秒内自动校准 |
 | zram 扩容 | 2GB 内存长期占用 96%，swap 吃掉 86MB，频繁 OOM | zram 509MB → **1GB**，空闲内存 63MB → **186–244MB** |
 | 按键唤醒屏幕 | 外壳无电源键，熄屏后只能靠触摸，而触摸唤醒依赖主动显示 | 按音量键即可点亮，开机自启 |
+| 全屏沉浸式 | 状态栏 + 导航栏常驻，占掉两行画面；当电视盒子或相框用时很碍眼 | 状态栏与导航栏隐藏，下缘上滑临时呼出、5 秒自动收起 |
 | Apple TV 风格壁纸 | 原厂壁纸灰白单调 | 深色抽象光带，横屏 1:1 铺满 |
 
 其他选项：
@@ -45,7 +46,9 @@ cd ThinkSmart-View-Toolkit
 ./install.sh --no-reboot       # 装完不重启
 ./install.sh --portrait        # 壁纸用竖屏版
 ./install.sh --no-wallpaper    # 不换壁纸
-./uninstall.sh                 # 一键还原全部改动
+./install.sh --no-immersive    # 不要全屏，保留状态栏和导航栏
+./install.sh --immersive-nav   # 只隐藏导航栏，状态栏留着看时间/电量
+./uninstall.sh                 # 一键还原全部改动（含退出全屏）
 ```
 
 不想用 git？直接下 [**v1.0 源码包**](https://github.com/wanjq1991/ThinkSmart-View-Toolkit/releases/latest)
