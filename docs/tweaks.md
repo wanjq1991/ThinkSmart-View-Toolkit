@@ -1,4 +1,4 @@
-# 四个优化的原理与调试方法
+# 各项优化的原理与调试方法
 
 这份文档不讲"怎么做"（`install.sh` 已经做完了），讲**为什么这么做**和**怎么自己查出来**。
 如果你手上是别的老 Android 设备，方法论可以直接搬过去。
@@ -324,6 +324,44 @@ adb reboot
 width 改成可滚动宽度 1600）并生成 `wallpaper_orig`——这不是失败，恰恰说明壁纸被接受了。
 
 **静态壁纸不随屏幕旋转**：按横屏 1280×800 做，横屏 1:1 完美；竖放时系统放大裁剪中间一块。
+
+---
+
+## 6. 全屏沉浸式：policy_control 和那个没人点的弹窗
+
+一行就能开：
+
+```bash
+adb shell settings put global policy_control immersive.full=*
+```
+
+它是 **sticky** 模式——导航栏只是被藏起来，从屏幕下缘上滑仍能临时唤出，5 秒无操作自动收起，
+所以不会出现"全屏之后回不到桌面"。值写在 `global` 里，重启后依旧生效。
+
+但只写这一行，无人值守的场景会翻车：
+
+```bash
+# 首次进入沉浸式，系统会弹一个"全屏提示"教学框，要你点"知道了"。
+# 电视 / 相框场景没人点，画面就永远停在那个弹窗上。
+# 先把这个确认标记写死，弹窗不再出现：
+adb shell settings put secure immersive_mode_confirmations confirmed
+```
+
+只想藏导航栏、保留状态栏看时间和电量：
+
+```bash
+adb shell settings put global policy_control immersive.navigation=*
+```
+
+还原：
+
+```bash
+adb shell settings delete global policy_control   # 读回 null 即已退出沉浸式
+```
+
+`immersive.full=*` 是不分应用的，输入法和对话框也在全屏里，偶尔会出现键盘贴到屏幕最下缘的情况。
+本机没有实体键、本来就当电视/相框用，这个代价可以接受；如果拿它当平板用，`--immersive-nav`
+只藏导航栏更稳。
 
 ---
 
