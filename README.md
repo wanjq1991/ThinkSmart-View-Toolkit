@@ -19,8 +19,8 @@ SoC     高通 APQ8053 / MSM8953   8×Cortex-A53  2GB RAM  3.8GB 存储
 前提：设备已刷好 LineageOS 15.1 + GApps，root 为 Magisk / KernelSU，能 `adb shell su`。
 
 ```bash
-git clone https://github.com/wanjq1991/thinksmart-view-lineageos.git
-cd thinksmart-view-lineageos
+git clone https://github.com/wanjq1991/ThinkSmart-View-Toolkit.git
+cd ThinkSmart-View-Toolkit
 ./install.sh --check     # 先体检，不做任何修改
 ./install.sh             # 确认没问题后正式部署，最后自动重启
 ```
