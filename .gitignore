@@ -1,0 +1,38 @@
+# ---------------------------------------------------------------------------
+# 大文件一律不入库：GitHub 单文件上限 100MB，且这些都能从上游重新下载
+# 需要的文件与 SHA256 校验值见 README「需要的文件与校验值」
+# ---------------------------------------------------------------------------
+*.zip
+*.img
+*.bin
+*.mbn
+*.apk
+*.jar
+*.7z
+*.tar
+*.gz
+*.xz
+*.iso
+
+# 刷机包与备份（按名字兜底，防止放在子目录里被漏掉）
+CD-18781Y*.zip
+lineage-*.zip
+lineage-*.img
+open_gapps-*.zip
+addonsu-*.zip
+Magisk-*.apk
+backup/
+fw_loader/
+magisk/
+
+# 系统与编辑器垃圾
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+.idea/
+.vscode/
+
+# adb 本地状态
+.adb/

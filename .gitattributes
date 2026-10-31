@@ -1,0 +1,14 @@
+# 统一 LF：shell 脚本在 Linux / macOS 上带 CRLF 会直接报
+#   /bin/bash^M: bad interpreter
+# 这个文件必须保留，否则 Windows 用户 clone 下来脚本就跑不了。
+* text=auto eol=lf
+
+*.sh    text eol=lf
+*.md    text eol=lf
+*.xml   text eol=lf
+*.yml   text eol=lf
+
+# 图片按二进制处理，别做任何换行转换
+*.jpg   binary
+*.jpeg  binary
+*.png   binary
