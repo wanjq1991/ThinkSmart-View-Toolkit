@@ -1,5 +1,10 @@
 # ThinkSmart View 刷机与优化
 
+[![release](https://img.shields.io/github/v/release/wanjq1991/ThinkSmart-View-Toolkit?label=release&color=blue)](https://github.com/wanjq1991/ThinkSmart-View-Toolkit/releases/latest)
+[![license](https://img.shields.io/github/license/wanjq1991/ThinkSmart-View-Toolkit)](LICENSE)
+[![platform](https://img.shields.io/badge/LineageOS-15.1%20%2F%20Android%208.1-green)](docs/flashing-guide.md)
+[![device](https://img.shields.io/badge/device-CD--18781Y-orange)](#)
+
 把联想 **ThinkSmart View（CD-18781Y）** 这台 8 寸 Teams 会议屏，改造成一台能用的
 LineageOS 平板，并解决它作为「无电池、无电源键、2GB 内存」设备必然会踩的一堆坑。
 
@@ -42,6 +47,9 @@ cd ThinkSmart-View-Toolkit
 ./install.sh --no-wallpaper    # 不换壁纸
 ./uninstall.sh                 # 一键还原全部改动
 ```
+
+不想用 git？直接下 [**v1.0 源码包**](https://github.com/wanjq1991/ThinkSmart-View-Toolkit/releases/latest)
+（zip / tar.gz），解压后同样跑 `./install.sh`。
 
 ---
 
