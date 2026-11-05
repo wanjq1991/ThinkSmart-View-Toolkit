@@ -5,10 +5,12 @@
 [![platform](https://img.shields.io/badge/LineageOS-15.1%20%2F%20Android%208.1-green)](docs/flashing-guide.md)
 [![device](https://img.shields.io/badge/device-CD--18781Y-orange)](#)
 
-把联想 **ThinkSmart View（CD-18781Y）** 这台 8 寸 Teams 会议屏，改造成一台能用的
-LineageOS 平板，并解决它作为「无电池、无电源键、2GB 内存」设备必然会踩的一堆坑。
+把联想 **ThinkSmart View（CD-18781Y）** 这台 8 寸 Teams 会议屏，从刷机开始一路改造成
+一台每天真在用的学习终端：系统层的六个坑、桌面层的五张卡片、可用的重启入口、
+第三方电视桌面、每日一句。
 
 所有脚本都是**在本机实测跑通并重启验证**过的，不是照着文档抄的。
+文档里每个"实测"后面都有对应的命令和读回的状态，不是"应该可以"。
 
 ```
 设备    Lenovo ThinkSmart View  CD-18781Y
@@ -201,6 +203,49 @@ keybox 是每台设备唯一、由厂商烧在安全分区的。这台机器出�
 
 ---
 
+## 桌面层：从空系统到能天天用的学习终端
+
+`install.sh` 跑完之后，设备能亮、能联网、能横屏，但还是"一台空的 Android"。
+上面这一层做的事：五张卡片的桌面、可用的重启入口、第三方电视桌面、每日一句。
+
+| 卡片 | 入口 | 备注 |
+|---|---|---|
+| DeepSeek / 豆包 | 网页版 AI 助手 | 需要 `INTERNET` |
+| 落雪 / 箭头音乐 | 本地音乐播放器 | |
+| 不息屏 | 通过 `content://` 调 service | 跨 App 开关 |
+| **Aerial** | 电视桌面，**长按重启设备** | 短按打开、长按重启 |
+| 系统桌面 | 回到原生 Launcher 找其他应用 | |
+
+这一步会踩到三个文档里查不到的坑：
+
+**① 重启按钮点不动。** 原设计是 POST 到 `127.0.0.1:8767/api/reboot`（FreeKiosk 方案）。
+实测三层全断：`api_key` 从没写入、端口没有监听、FreeKiosk 根本没装。
+设备本来就有 root，改成 `su -c "id -u"` 验证身份后直接 `sync; reboot`，
+FreeKiosk 只留作回退。
+
+**② 第三方桌面方向反 180°。** Aerial 声明 `landscape`（rotation 1），
+而这块面板横放时的正向是 `rotation 3`。没有源码，直接改 APK 里的二进制清单，
+只覆盖 4 字节、文件长度不变。工具在 [tools/aerial-patch](tools/aerial-patch/)。
+
+**③ 装完就抢桌面，改 HOME 声明也没用。** 真凶是它的 `guard.BootReceiver`，
+`directBootAware`，在 `LOCKED_BOOT_COMPLETED` 阶段就起来了 —— 比系统确定默认桌面早得多。
+`HOME` category 管"能不能当桌面"，管不了"开机谁先在前台"，要分别处理：
+
+```bash
+adb shell su -c "pm disable --user 0 app.orchard.tv/app.orchard.tv.guard.BootReceiver"
+adb shell cmd package set-home-activity local.thinksmart.dashboard/.MainActivity
+```
+
+每日一句 365 条，一天一条。排期不按日历取模，而是记一个**锚点**
+（哪天手动切到了第几条），当天条目 = `(今天 - 锚点日 + 锚点索引) mod 365`。
+好处是"手动切换影响第二天"不用额外写跨天逻辑，是算法的自然结果。
+点句首一小块看**上一条**、其余整行看下一条，热区按前 8 个字的实际测量宽度算。
+
+原理、代码片段、验收命令都在 **[docs/desktop.md](docs/desktop.md)**，
+完整的六天时间线（每步卡在哪、怎么判断出来）在 **[docs/journey.md](docs/journey.md)**。
+
+---
+
 ## 目录结构
 
 ```
@@ -217,9 +262,18 @@ keybox 是每台设备唯一、由厂商烧在安全分区的。这台机器出�
 │   └── appletv_source_1536x1024.png
 ├── docs/
 │   ├── flashing-guide.md       # 完整刷机手册 + 全部踩坑记录
-│   └── tweaks.md               # 四个优化的原理与调试方法（可移植到别的机型）
+│   ├── tweaks.md               # 四个优化的原理与调试方法（可移植到别的机型）
+│   ├── desktop.md              # 桌面层：root 重启、Aerial、每日一句、抢桌面
+│   └── journey.md              # 六天折腾全程（每步卡在哪、怎么判断）
 └── tools/
-    └── verify.sh               # 装完后自检，逐项确认是否真的生效
+    ├── verify.sh               # 装完后自检，逐项确认是否真的生效
+    ├── aerial-patch/           # 改无源码 APK 的二进制清单（方向 / 去 HOME）
+    │   ├── axml.py             #   AXML 解析（字符串池 + 属性记录定位）
+    │   ├── patch_manifest.py   #   list / set-int / set-str
+    │   ├── repack.sh           #   zipalign + apksigner
+    │   └── README.md           #   偏移表、rawValue 陷阱、验证方法
+    └── quotes/
+        └── quotes.txt          # 365 条每日诗句，一行 `句子|出处`
 ```
 
 ---
@@ -267,10 +321,40 @@ adb shell input keyevent KEYCODE_POWER
 **Q：Magisk 提示更新能点吗？**
 **别点。** 会升到 30.6 与核心 26.4 不匹配，需要用 `adb install -r -d` 降回来。
 
+**Q：重启按钮弹「暂时无法重启」？**
+没拿到 root。到 Magisk 里给桌面 App 授权，或者直接写策略免弹窗：
+
+```bash
+adb shell su -c "magisk --sqlite \"INSERT OR REPLACE INTO policies(uid,policy,until,logging,notification) VALUES(<uid>,2,0,1,1)\""
+```
+
+uid 用 `dumpsys package local.thinksmart.dashboard | grep userId` 查。
+
+**Q：Aerial 装完画面是倒的？**
+`landscape` 在这块面板上反 180°，要改成 `reverseLandscape`。
+没有源码就走二进制清单补丁，见 [tools/aerial-patch](tools/aerial-patch/)。
+**验证别用截图** —— `screencap` 会跟着显示旋转出图，倒着的截图看起来是正的，
+只能看 `dumpsys display | grep mOverrideDisplayInfo` 的 rotation 是不是 3。
+
+**Q：重装桌面 App 之后开机又进别的桌面了？**
+重装（尤其签名变化后卸载重装）会清掉默认桌面设置，重设一次：
+`adb shell cmd package set-home-activity local.thinksmart.dashboard/.MainActivity`。
+
+**Q：桌面 App 一装，开机就被别的应用抢前台？**
+看 `logcat -b all | grep -i bootreceiver`。多半是对方有个 `directBootAware` 的
+`BootReceiver` 在 `LOCKED_BOOT_COMPLETED` 就起来了，改 `HOME` category 管不到它，
+要单独 `pm disable --user 0 <pkg>/<receiver>`。
+
 ---
 
 ## 致谢
 
+- **[samyeei/thinksmart-learning-station](https://github.com/samyeei/thinksmart-learning-station)** ——
+  桌面 App 的上游项目，作者 **samyeei**。卡片布局、大时钟、Wi-Fi 指示、每日句子的
+  原始形态都来自这里；本仓库桌面层的改动是在它之上做的增量，详见
+  [docs/desktop.md](docs/desktop.md)。
+- **[WorkBuddy](https://www.workbuddy.cn/)** —— 协助完成了整个过程的排查记录、
+  二进制清单补丁工具、桌面层代码修改与本文档的整理。
 - [LineageOS](https://lineageos.org/) 与 starfire 的维护者 deadman96385 / electimon
 - [bkerler/edl](https://github.com/bkerler/edl) —— 高通 EDL 刷机工具链
 - [OpenGApps](https://opengapps.org/)、[Magisk](https://github.com/topjohnwu/Magisk)、
