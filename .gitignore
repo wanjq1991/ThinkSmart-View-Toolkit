@@ -25,6 +25,10 @@ backup/
 fw_loader/
 magisk/
 
+# 例外：这一份无法从上游重新取得（要自己下载原始 APK 再打补丁），
+# 只有 3MB，留一份省得每个人重跑一遍。版权归属与免责说明见同目录 README。
+!tools/aerial-patch/aerial-app-patched.apk
+
 # 系统与编辑器垃圾
 .DS_Store
 Thumbs.db
